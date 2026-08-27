@@ -1,5 +1,7 @@
 # dsh-llm-concurrency
 
+English | [中文](README.zh.md)
+
 Process-wide per-provider concurrency gate for DeepSeek Harness LLM streams.
 
 ## Why
