@@ -38,6 +38,44 @@ dsh --profile web --dump-config | tail
 
 此时 `luna-relay` 在该 Host 进程中最多同时有 3 条活动流；超出的调用按 FIFO 等待而不是失败。
 
+## `luna-relay` 是从哪里来的
+
+`luna-relay` 不是本插件自带的 Provider。它是 pi-ai 适配器（`@deepseek-ai/dsh-llm-pi-ai`）通过 DSH settings 激活的**可配置 Provider 路由**，定义在 `~/.dsh/settings.yaml` 的 `llm-pi-ai.providers` 下。下面的示例指向一个 OpenAI 兼容的中转端点；API key 从 `apiKeyEnv` 指定的环境变量读取：
+
+```yaml
+# ~/.dsh/settings.yaml
+llm-pi-ai:
+  providers:
+    luna-relay:
+      displayName: OpenaiRelay
+      apiKeyEnv: DSH_RELAY_API_KEY
+      api: openai-completions
+      baseURL: https://your-relay.example.com/v1
+      reasoning: xhigh
+      models:
+        - id: gpt-5.6-luna
+          name: GPT-5.6 Luna
+          contextWindow: 272000
+          maxTokens: 128000
+```
+
+插件只需要 **Provider 名字匹配**。两份配置配合使用：
+
+1. `settings.yaml` 声明路由（`luna-relay` → 端点、模型、密钥环境变量）。
+2. `cordis.patch.yml` 对同一个名字施加并发限制。
+
+```yaml
+# ~/.dsh/profiles/web/cordis.patch.yml
+- insert:
+    - id: llm-concurrency
+      name: ./llm-concurrency.mjs
+      config:
+        maxConcurrentRequests:
+          luna-relay: 3
+```
+
+把 `luna-relay` 换成你自己 settings 里的任意 Provider 名（例如 `deepseek-official`），就可以用同样的方式限制它。
+
 ## 行为说明
 
 - 所有 session 和 Host LLM consumer 之间严格 FIFO，不设优先级类别。
